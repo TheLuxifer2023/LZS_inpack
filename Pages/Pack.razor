@@ -1,0 +1,308 @@
+@page "/pack"
+@using LZS_Web.Services
+@inject PhyreEngineService PhyreService
+@inject FileProcessingService FileService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Pack - LZS Phyre Engine Tool</PageTitle>
+
+<div class="container-fluid">
+    <h1>🔧 Pack Phyre Files</h1>
+    <p class="lead">Упаковка модифицированных шрифтов и текстур обратно в .phyre файлы</p>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>1. Загрузите BMFont файл (.fnt)</h5>
+                </div>
+                <div class="card-body">
+                    <InputFile OnChange="@OnFntFileSelected" accept=".fnt" class="form-control" maxAllowedSize="100_000_000" />
+                    @if (!string.IsNullOrEmpty(fntFileName))
+                    {
+                        <div class="mt-3">
+                            <div class="alert alert-success">
+                                <strong>BMFont загружен:</strong> @fntFileName<br/>
+                                <strong>Размер:</strong> @FileService.GetFileSize(fntFileSize)
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>2. Загрузите текстуру</h5>
+                </div>
+                <div class="card-body">
+                    <InputFile OnChange="@OnTextureFileSelected" accept=".dds,.gtf,.png" class="form-control" maxAllowedSize="100_000_000" />
+                    @if (!string.IsNullOrEmpty(textureFileName))
+                    {
+                        <div class="mt-3">
+                            <div class="alert alert-success">
+                                <strong>Текстура загружена:</strong> @textureFileName<br/>
+                                <strong>Размер:</strong> @FileService.GetFileSize(textureFileSize)<br/>
+                                <strong>Формат:</strong> @FileService.GetFileExtension(textureFileName).ToUpper()
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(fntFilePath) && !string.IsNullOrEmpty(textureFilePath))
+            {
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>3. Настройки упаковки</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group mb-3">
+                            <label class="form-label">Имя выходного файла:</label>
+                            <input type="text" @bind="outputFileName" class="form-control" placeholder="font_modified.phyre" />
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label">Операции:</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" @bind="autoConvertTexture" id="autoConvert">
+                                <label class="form-check-label" for="autoConvert">
+                                    Автоматически конвертировать PNG в DDS/GTF
+                                </label>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" @onclick="StartPacking" disabled="@isProcessing">
+                            @if (isProcessing)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            Начать упаковку
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-md-6">
+            @if (isProcessing)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5>🔄 Обработка...</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <p class="mt-2">Выполняется упаковка файла...</p>
+                    </div>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(resultOutput))
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5>📋 Результат упаковки</h5>
+                    </div>
+                    <div class="card-body">
+                        <pre class="bg-light p-3 rounded">@resultOutput</pre>
+                        
+                        @if (hasError)
+                        {
+                            <div class="alert alert-danger mt-3">
+                                <strong>Ошибка:</strong> @resultError
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-success mt-3">
+                                <strong>Успешно!</strong> Упаковка завершена.
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(packedFilePath) && File.Exists(packedFilePath))
+            {
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>📦 Упакованный файл</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>@Path.GetFileName(packedFilePath)</strong><br/>
+                                <small class="text-muted">@FileService.GetFileSize(new FileInfo(packedFilePath).Length)</small>
+                            </div>
+                            <button class="btn btn-primary" @onclick="() => DownloadFile(packedFilePath, Path.GetFileName(packedFilePath))">
+                                📥 Скачать .phyre файл
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>💡 Информация об упаковке</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>🔧 Template-based Packing</h6>
+                            <ul>
+                                <li>Использует оригинальную структуру .phyre</li>
+                                <li>Точное воспроизведение размера файла</li>
+                                <li>Сохранение всех метаданных</li>
+                                <li>Замена только данных символов и текстуры</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>📝 Поддерживаемые форматы</h6>
+                            <ul>
+                                <li><strong>BMFont:</strong> .fnt файлы</li>
+                                <li><strong>GTF:</strong> Sony GTF текстуры</li>
+                                <li><strong>DDS:</strong> DirectDraw Surface</li>
+                                <li><strong>PNG:</strong> Автоконвертация в DDS</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string fntFilePath = string.Empty;
+    private string fntFileName = string.Empty;
+    private long fntFileSize = 0;
+    private string textureFilePath = string.Empty;
+    private string textureFileName = string.Empty;
+    private long textureFileSize = 0;
+    private string outputFileName = "font_modified.phyre";
+    private bool autoConvertTexture = true;
+    private bool isProcessing = false;
+    private string resultOutput = string.Empty;
+    private string resultError = string.Empty;
+    private bool hasError = false;
+    private string packedFilePath = string.Empty;
+
+    private async Task OnFntFileSelected(InputFileChangeEventArgs e)
+    {
+        if (e.File != null)
+        {
+            try
+            {
+                fntFilePath = await FileService.SaveBrowserFileAsync(e.File);
+                fntFileName = e.File.Name;
+                fntFileSize = e.File.Size;
+                ClearResults();
+            }
+            catch (Exception ex)
+            {
+                resultError = $"Ошибка загрузки BMFont файла: {ex.Message}";
+                hasError = true;
+            }
+        }
+    }
+
+    private async Task OnTextureFileSelected(InputFileChangeEventArgs e)
+    {
+        if (e.File != null)
+        {
+            try
+            {
+                textureFilePath = await FileService.SaveBrowserFileAsync(e.File);
+                textureFileName = e.File.Name;
+                textureFileSize = e.File.Size;
+                ClearResults();
+            }
+            catch (Exception ex)
+            {
+                resultError = $"Ошибка загрузки текстуры: {ex.Message}";
+                hasError = true;
+            }
+        }
+    }
+
+    private async Task StartPacking()
+    {
+        if (string.IsNullOrEmpty(fntFilePath) || string.IsNullOrEmpty(textureFilePath))
+            return;
+
+        isProcessing = true;
+        ClearResults();
+
+        try
+        {
+            var workingTexturePath = textureFilePath;
+
+            // Автоконвертация PNG в DDS если нужно
+            if (autoConvertTexture && FileService.GetFileExtension(textureFileName) == ".png")
+            {
+                var ddsPath = Path.ChangeExtension(textureFilePath, ".dds");
+                var convertResult = await PhyreService.ConvertToDDSAsync(textureFilePath, ddsPath);
+                if (convertResult.Success)
+                {
+                    workingTexturePath = ddsPath;
+                }
+                else
+                {
+                    throw new Exception($"Ошибка конвертации PNG в DDS: {convertResult.Error}");
+                }
+            }
+
+            // Определяем путь для выходного файла
+            var outputPath = Path.Combine(Path.GetDirectoryName(fntFilePath)!, outputFileName);
+
+            var result = await PhyreService.PackFontAsync(fntFilePath, workingTexturePath, outputPath);
+
+            resultOutput = result.Output;
+            resultError = result.Error;
+            hasError = !result.Success;
+
+            if (result.Success)
+            {
+                packedFilePath = outputPath;
+            }
+        }
+        catch (Exception ex)
+        {
+            resultError = $"Ошибка выполнения упаковки: {ex.Message}";
+            hasError = true;
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task DownloadFile(string filePath, string fileName)
+    {
+        try
+        {
+            var downloadUrl = await FileService.SaveDownloadFileAsync(filePath, fileName);
+            await JSRuntime.InvokeVoidAsync("open", downloadUrl, "_blank");
+        }
+        catch (Exception ex)
+        {
+            resultError = $"Ошибка скачивания: {ex.Message}";
+            hasError = true;
+        }
+    }
+
+    private void ClearResults()
+    {
+        resultOutput = string.Empty;
+        resultError = string.Empty;
+        hasError = false;
+        packedFilePath = string.Empty;
+    }
+}

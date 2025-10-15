@@ -1,0 +1,231 @@
+@page "/"
+@using LZS_Web.Services
+@inject PhyreEngineService PhyreService
+@inject FileProcessingService FileService
+
+<PageTitle>LZS Phyre Engine Tool v2.7</PageTitle>
+
+<div class="hero-section">
+    <h1>🎮 LZS Phyre Engine Tool v2.7</h1>
+    <p class="lead">Профессиональный веб-интерфейс для работы с Phyre Engine файлами</p>
+    <p class="subtitle">PlayStation 3/4/Vita - Extract, Modify, Pack, Verify</p>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="feature-card">
+            <div class="feature-icon">📦</div>
+            <h3>Extract</h3>
+            <p>Извлечение шрифтов и текстур из .phyre файлов</p>
+            <ul>
+                <li>Полная экстракция символов (7447+)</li>
+                <li>Поддержка DDS, GTF, PNG</li>
+                <li>BMFont и JSON форматы</li>
+            </ul>
+            <a href="/extract" class="btn btn-primary">Начать извлечение</a>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="feature-card">
+            <div class="feature-icon">🔧</div>
+            <h3>Pack</h3>
+            <p>Упаковка модифицированных файлов обратно в .phyre</p>
+            <ul>
+                <li>Template-based packing</li>
+                <li>Точное воспроизведение размера</li>
+                <li>Поддержка оригинальных форматов</li>
+            </ul>
+            <a href="/pack" class="btn btn-primary">Начать упаковку</a>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="feature-card">
+            <div class="feature-icon">✅</div>
+            <h3>Verify</h3>
+            <p>Профессиональная проверка качества упаковки</p>
+            <ul>
+                <li>Анализ заголовков</li>
+                <li>Валидация структур</li>
+                <li>Сравнение с оригиналом</li>
+            </ul>
+            <a href="/verify" class="btn btn-primary">Проверить файл</a>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="info-card">
+            <h4>🔄 Полный цикл модификации</h4>
+            <ol>
+                <li><strong>Extract</strong> - Извлечение шрифта и текстуры</li>
+                <li><strong>Modify</strong> - Редактирование в Photoshop/GIMP</li>
+                <li><strong>Convert</strong> - Конвертация форматов</li>
+                <li><strong>Pack</strong> - Упаковка обратно в .phyre</li>
+                <li><strong>Verify</strong> - Проверка качества</li>
+            </ol>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="info-card">
+            <h4>🎯 Поддерживаемые форматы</h4>
+            <ul>
+                <li><strong>Phyre Engine</strong> - .phyre файлы</li>
+                <li><strong>BMFont</strong> - .fnt метрики шрифтов</li>
+                <li><strong>GTF</strong> - Sony GTF текстуры</li>
+                <li><strong>DDS</strong> - DirectDraw Surface</li>
+                <li><strong>PNG</strong> - Для редактирования</li>
+                <li><strong>JSON</strong> - Метаданные символов</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="stats-card">
+            <h4>📊 Статистика проекта</h4>
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number">100%</div>
+                        <div class="stat-label">Экстракция символов</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number">7447+</div>
+                        <div class="stat-label">Символов Unicode</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number">6</div>
+                        <div class="stat-label">Форматов поддержки</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-item">
+                        <div class="stat-number">v2.7</div>
+                        <div class="stat-label">Текущая версия</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hero-section {
+        text-align: center;
+        padding: 2rem 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        margin-bottom: 2rem;
+        border-radius: 10px;
+    }
+    
+    .hero-section h1 {
+        font-size: 3rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+    
+    .hero-section .lead {
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .hero-section .subtitle {
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+    
+    .feature-card {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 2rem;
+        height: 100%;
+        transition: transform 0.3s ease;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .feature-icon {
+        font-size: 3rem;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    
+    .feature-card h3 {
+        color: #333;
+        margin-bottom: 1rem;
+    }
+    
+    .feature-card ul {
+        margin: 1rem 0;
+        padding-left: 1.5rem;
+    }
+    
+    .feature-card li {
+        margin-bottom: 0.5rem;
+        color: #666;
+    }
+    
+    .info-card {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        border-left: 4px solid #007bff;
+    }
+    
+    .info-card h4 {
+        color: #333;
+        margin-bottom: 1rem;
+    }
+    
+    .info-card ol, .info-card ul {
+        margin: 0;
+        padding-left: 1.5rem;
+    }
+    
+    .info-card li {
+        margin-bottom: 0.5rem;
+        color: #555;
+    }
+    
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        text-align: center;
+    }
+    
+    .stats-card h4 {
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+    }
+    
+    .stat-item {
+        margin-bottom: 1rem;
+    }
+    
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+</style>

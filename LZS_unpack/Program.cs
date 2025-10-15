@@ -22,6 +22,7 @@ namespace LZS_unpack
 			Console.WriteLine("  Texture:   LZS_inpack.exe -texture <font.phyre>  (Extract texture with auto-format detection) ✨ Updated!");
 			Console.WriteLine("  Verify:    LZS_inpack.exe -verify <packed.phyre> [original.phyre]  (Verify packed file quality) ✨ NEW!");
 			Console.WriteLine("  Detect:    LZS_inpack.exe -detect <file>  (Auto-detect file format & content type) ✨ Enhanced!");
+			Console.WriteLine("  Web UI:    LZS_inpack.exe -startweb  (Start web interface on http://localhost:5000) ✨ NEW!");
 			Console.WriteLine("");
 			Console.WriteLine("Font Analysis & Extraction:");
 			Console.WriteLine("  Extract:   LZS_inpack.exe -extract <font.phyre>  (Auto-extract font - may not find all chars)");
@@ -55,6 +56,7 @@ namespace LZS_unpack
 			Console.WriteLine("  LZS_inpack.exe -detect unknown_file.bin  ✨ Enhanced detection!");
 			Console.WriteLine("  LZS_inpack.exe -detect font00_usa.fgen.phyre  ✨ Detects: PhyreFont + GTF!");
 			Console.WriteLine("  LZS_inpack.exe -verify font_new.phyre font_original.phyre  ✨ Verify quality!");
+			Console.WriteLine("  LZS_inpack.exe -startweb  ✨ Launch web interface!");
 		}
 
 		private static Quaternion3D matrix2quat(double[,] m)
@@ -111,6 +113,21 @@ namespace LZS_unpack
 			if (args.Length == 0)
 			{
 				ShowUsage();
+				return;
+			}
+
+			// Check if web interface mode
+			if (args.Length >= 1 && args[0] == "-startweb")
+			{
+				try
+				{
+					StartWebInterface();
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine("Error starting web interface: " + ex.Message);
+					Console.WriteLine(ex.StackTrace);
+				}
 				return;
 			}
 
@@ -984,6 +1001,100 @@ namespace LZS_unpack
 			Console.WriteLine("Output files:");
 			Console.WriteLine("  " + Path.GetFileNameWithoutExtension(inputPath) + ".smd");
 			Console.WriteLine("  " + Path.GetFileNameWithoutExtension(inputPath) + ".mesh.ascii");
+		}
+
+		private static void StartWebInterface()
+		{
+			Console.WriteLine("🌐 Starting LZS Phyre Engine Tool Web Interface...");
+			Console.WriteLine();
+			Console.WriteLine("📋 Web Interface Features:");
+			Console.WriteLine("  • Extract fonts and textures from .phyre files");
+			Console.WriteLine("  • Pack fonts and models back to .phyre format");
+			Console.WriteLine("  • Verify packed file quality");
+			Console.WriteLine("  • Convert textures (DDS ↔ PNG ↔ GTF)");
+			Console.WriteLine("  • Analyze file structures");
+			Console.WriteLine("  • Auto-detect file formats");
+			Console.WriteLine();
+			Console.WriteLine("🚀 Launching web server...");
+			Console.WriteLine("📍 URL: http://localhost:5000");
+			Console.WriteLine();
+			Console.WriteLine("💡 Tip: The web interface will open automatically in your default browser.");
+			Console.WriteLine("🛑 Press Ctrl+C to stop the web server.");
+			Console.WriteLine();
+
+			try
+			{
+				// Get the current directory
+				string currentDir = Directory.GetCurrentDirectory();
+				
+				// Check if LZS_Web.exe exists in bin/Release/net9.0/
+				string webExePath = Path.Combine(currentDir, "bin", "Release", "net9.0", "LZS_Web.exe");
+				if (!File.Exists(webExePath))
+				{
+					Console.WriteLine("❌ Error: LZS_Web.exe not found!");
+					Console.WriteLine("   Expected location: " + webExePath);
+					Console.WriteLine("   Make sure the web application is built in Release mode.");
+					Console.WriteLine("   Run: dotnet build LZS_Web.csproj -c Release");
+					return;
+				}
+
+				// Start the web application
+				var startInfo = new System.Diagnostics.ProcessStartInfo
+				{
+					FileName = webExePath,
+					Arguments = "--urls \"http://localhost:5000\"",
+					UseShellExecute = false,
+					RedirectStandardOutput = false,
+					RedirectStandardError = false,
+					CreateNoWindow = false
+				};
+
+				Console.WriteLine("🔄 Starting web application...");
+				var process = System.Diagnostics.Process.Start(startInfo);
+				
+				if (process != null)
+				{
+					Console.WriteLine("✅ Web server started successfully!");
+					Console.WriteLine();
+					
+					// Try to open browser (Windows only)
+					try
+					{
+						System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+						{
+							FileName = "http://localhost:5000",
+							UseShellExecute = true
+						});
+						Console.WriteLine("🌐 Browser opened automatically.");
+					}
+					catch
+					{
+						Console.WriteLine("💡 Please open your browser manually and go to: http://localhost:5000");
+					}
+					
+					Console.WriteLine();
+					Console.WriteLine("⏳ Web server is running... Press Ctrl+C to stop.");
+					
+					// Wait for the process to exit
+					process.WaitForExit();
+				}
+				else
+				{
+					Console.WriteLine("❌ Failed to start web server process!");
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("❌ Error starting web interface:");
+				Console.WriteLine("   " + ex.Message);
+				Console.WriteLine();
+				Console.WriteLine("💡 Troubleshooting:");
+				Console.WriteLine("   • Make sure LZS_Web.exe is built in Release mode");
+				Console.WriteLine("   • Check if port 5000 is available");
+				Console.WriteLine("   • Run from the project root directory");
+				Console.WriteLine("   • Build web app manually: dotnet build LZS_Web.csproj -c Release");
+				Console.WriteLine("   • Try running manually: bin\\Release\\net9.0\\LZS_Web.exe");
+			}
 		}
 	}
 }

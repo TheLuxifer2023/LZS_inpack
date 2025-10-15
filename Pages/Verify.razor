@@ -1,0 +1,253 @@
+@page "/verify"
+@using LZS_Web.Services
+@inject PhyreEngineService PhyreService
+@inject FileProcessingService FileService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Verify - LZS Phyre Engine Tool</PageTitle>
+
+<div class="container-fluid">
+    <h1>✅ Verify Packed Files</h1>
+    <p class="lead">Профессиональная проверка качества упакованных .phyre файлов</p>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>1. Загрузите упакованный .phyre файл</h5>
+                </div>
+                <div class="card-body">
+                    <InputFile OnChange="@OnPackedFileSelected" accept=".phyre" class="form-control" maxAllowedSize="100_000_000" />
+                    @if (!string.IsNullOrEmpty(packedFileName))
+                    {
+                        <div class="mt-3">
+                            <div class="alert alert-success">
+                                <strong>Упакованный файл:</strong> @packedFileName<br/>
+                                <strong>Размер:</strong> @FileService.GetFileSize(packedFileSize)
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>2. Загрузите оригинальный файл (опционально)</h5>
+                </div>
+                <div class="card-body">
+                    <InputFile OnChange="@OnOriginalFileSelected" accept=".phyre" class="form-control" maxAllowedSize="100_000_000" />
+                    @if (!string.IsNullOrEmpty(originalFileName))
+                    {
+                        <div class="mt-3">
+                            <div class="alert alert-info">
+                                <strong>Оригинальный файл:</strong> @originalFileName<br/>
+                                <strong>Размер:</strong> @FileService.GetFileSize(originalFileSize)
+                            </div>
+                        </div>
+                    }
+                    <small class="text-muted">
+                        Сравнение с оригиналом поможет выявить различия в размере и структуре
+                    </small>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(packedFilePath))
+            {
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>3. Запустить верификацию</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-primary" @onclick="StartVerification" disabled="@isProcessing">
+                            @if (isProcessing)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            Начать верификацию
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-md-6">
+            @if (isProcessing)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5>🔄 Верификация...</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <p class="mt-2">Анализ структуры и валидация данных...</p>
+                    </div>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(resultOutput))
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5>📋 Результат верификации</h5>
+                    </div>
+                    <div class="card-body">
+                        <pre class="bg-light p-3 rounded">@resultOutput</pre>
+                        
+                        @if (hasError)
+                        {
+                            <div class="alert alert-danger mt-3">
+                                <strong>Ошибка:</strong> @resultError
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-success mt-3">
+                                <strong>Верификация завершена!</strong> Проверьте результаты выше.
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>🔍 Что проверяет верификатор</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>📊 Анализ заголовка</h6>
+                            <ul>
+                                <li>Проверка magic bytes ('PHYR')</li>
+                                <li>Диагностика endianness проблем</li>
+                                <li>Валидация offsets и counts</li>
+                                <li>Проверка размеров структур</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>🔍 Поиск структур</h6>
+                            <ul>
+                                <li>PTexture2D структуры</li>
+                                <li>PBitmapFont дескрипторы</li>
+                                <li>PBitmapFontCharInfo данные</li>
+                                <li>Валидация координат и размеров</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <h6>📈 Статистика данных</h6>
+                            <ul>
+                                <li>Количество найденных символов</li>
+                                <li>Диапазон Unicode кодов</li>
+                                <li>Покрытие ASCII символов</li>
+                                <li>Анализ языковых наборов</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>⚖️ Сравнение с оригиналом</h6>
+                            <ul>
+                                <li>Размер файла (байт в байт)</li>
+                                <li>Обнаруженные форматы</li>
+                                <li>Структурные различия</li>
+                                <li>Качество упаковки</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string packedFilePath = string.Empty;
+    private string packedFileName = string.Empty;
+    private long packedFileSize = 0;
+    private string originalFilePath = string.Empty;
+    private string originalFileName = string.Empty;
+    private long originalFileSize = 0;
+    private bool isProcessing = false;
+    private string resultOutput = string.Empty;
+    private string resultError = string.Empty;
+    private bool hasError = false;
+
+    private async Task OnPackedFileSelected(InputFileChangeEventArgs e)
+    {
+        if (e.File != null)
+        {
+            try
+            {
+                packedFilePath = await FileService.SaveBrowserFileAsync(e.File);
+                packedFileName = e.File.Name;
+                packedFileSize = e.File.Size;
+                ClearResults();
+            }
+            catch (Exception ex)
+            {
+                resultError = $"Ошибка загрузки упакованного файла: {ex.Message}";
+                hasError = true;
+            }
+        }
+    }
+
+    private async Task OnOriginalFileSelected(InputFileChangeEventArgs e)
+    {
+        if (e.File != null)
+        {
+            try
+            {
+                originalFilePath = await FileService.SaveBrowserFileAsync(e.File);
+                originalFileName = e.File.Name;
+                originalFileSize = e.File.Size;
+                ClearResults();
+            }
+            catch (Exception ex)
+            {
+                resultError = $"Ошибка загрузки оригинального файла: {ex.Message}";
+                hasError = true;
+            }
+        }
+    }
+
+    private async Task StartVerification()
+    {
+        if (string.IsNullOrEmpty(packedFilePath))
+            return;
+
+        isProcessing = true;
+        ClearResults();
+
+        try
+        {
+            var originalPath = !string.IsNullOrEmpty(originalFilePath) ? originalFilePath : null;
+            var result = await PhyreService.VerifyPackedFileAsync(packedFilePath, originalPath);
+
+            resultOutput = result.Output;
+            resultError = result.Error;
+            hasError = !result.Success;
+        }
+        catch (Exception ex)
+        {
+            resultError = $"Ошибка выполнения верификации: {ex.Message}";
+            hasError = true;
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void ClearResults()
+    {
+        resultOutput = string.Empty;
+        resultError = string.Empty;
+        hasError = false;
+    }
+}

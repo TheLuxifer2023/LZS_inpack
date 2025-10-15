@@ -1,0 +1,310 @@
+@page "/extract"
+@using LZS_Web.Services
+@inject PhyreEngineService PhyreService
+@inject FileProcessingService FileService
+@inject IJSRuntime JSRuntime
+@inject ILogger<Extract> Logger
+
+<PageTitle>Extract - LZS Phyre Engine Tool</PageTitle>
+
+<div class="container-fluid">
+    <h1>📦 Extract Phyre Files</h1>
+    <p class="lead">Извлечение шрифтов и текстур из .phyre файлов</p>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>1. Загрузите .phyre файл</h5>
+                </div>
+                <div class="card-body">
+                    <InputFile OnChange="@OnFileSelected" accept=".phyre" class="form-control" maxAllowedSize="100_000_000" />
+                    
+                    @* Отладочная информация *@
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            Debug: uploadedFileName='@uploadedFileName', uploadedFilePath='@uploadedFilePath'
+                        </small>
+                    </div>
+                    
+                    @if (!string.IsNullOrEmpty(uploadedFileName))
+                    {
+                        <div class="mt-3">
+                            <div class="alert alert-success">
+                                <strong>Файл загружен:</strong> @uploadedFileName<br/>
+                                <strong>Размер:</strong> @FileService.GetFileSize(uploadedFileSize)<br/>
+                                <strong>Путь:</strong> @uploadedFilePath
+                            </div>
+                        </div>
+                    }
+                    
+                    @if (hasError)
+                    {
+                        <div class="mt-3">
+                            <div class="alert alert-danger">
+                                <strong>Ошибка:</strong> @resultError
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(uploadedFilePath))
+            {
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>2. Выберите тип извлечения</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group mb-3">
+                            <label class="form-label">Тип операции:</label>
+                            <select @bind="extractionType" class="form-select">
+                                <option value="texture">Полное извлечение (текстура + символы)</option>
+                                <option value="characters">Только символы</option>
+                                <option value="analyze">Анализ структуры</option>
+                                <option value="finddata">Найти данные шрифта</option>
+                            </select>
+                        </div>
+
+                        @if (extractionType == "characters")
+                        {
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label class="form-label">Offset:</label>
+                                    <input type="number" @bind="charOffset" class="form-control" placeholder="3446" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Count:</label>
+                                    <input type="number" @bind="charCount" class="form-control" placeholder="7447" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Size:</label>
+                                    <input type="number" @bind="charSize" class="form-control" placeholder="45" />
+                                </div>
+                            </div>
+                        }
+
+                        <button class="btn btn-primary mt-3" @onclick="StartExtraction" disabled="@isProcessing">
+                            @if (isProcessing)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            Начать извлечение
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-md-6">
+            @if (isProcessing)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5>🔄 Обработка...</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <p class="mt-2">Выполняется извлечение файла...</p>
+                    </div>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(resultOutput))
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5>📋 Результат извлечения</h5>
+                    </div>
+                    <div class="card-body">
+                        <pre class="bg-light p-3 rounded">@resultOutput</pre>
+                        
+                        @if (hasError)
+                        {
+                            <div class="alert alert-danger mt-3">
+                                <strong>Ошибка:</strong> @resultError
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-success mt-3">
+                                <strong>Успешно!</strong> Извлечение завершено.
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (resultFiles.Any())
+            {
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>📁 Извлеченные файлы</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group">
+                            @foreach (var file in resultFiles)
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>@file.Name</strong><br/>
+                                        <small class="text-muted">@FileService.GetFileSize(file.Length)</small>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => DownloadFile(file.FullName, file.Name)">
+                                        📥 Скачать
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>💡 Информация о типах извлечения</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>🔧 Полное извлечение (texture)</h6>
+                            <ul>
+                                <li>Извлекает все символы (7447+)</li>
+                                <li>Извлекает текстуру в оригинальном формате</li>
+                                <li>Автоматически конвертирует в PNG</li>
+                                <li>Создает BMFont (.fnt) и JSON файлы</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>📝 Только символы (characters)</h6>
+                            <ul>
+                                <li>Требует указания offset, count, size</li>
+                                <li>Используйте "Найти данные шрифта" для получения параметров</li>
+                                <li>Создает только .fnt и .json файлы</li>
+                                <li>Для точной настройки параметров</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string uploadedFilePath = string.Empty;
+    private string uploadedFileName = string.Empty;
+    private long uploadedFileSize = 0;
+    private string extractionType = "texture";
+    private int charOffset = 3446;
+    private int charCount = 7447;
+    private int charSize = 45;
+    private bool isProcessing = false;
+    private string resultOutput = string.Empty;
+    private string resultError = string.Empty;
+    private bool hasError = false;
+    private List<FileInfo> resultFiles = new();
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        Logger.LogInformation($"OnFileSelected called with file: {e.File?.Name}");
+        
+        if (e.File != null)
+        {
+            try
+            {
+                Logger.LogInformation($"Starting file upload: {e.File.Name}, size: {e.File.Size}");
+                uploadedFilePath = await FileService.SaveBrowserFileAsync(e.File);
+                uploadedFileName = e.File.Name;
+                uploadedFileSize = e.File.Size;
+                resultOutput = string.Empty;
+                resultError = string.Empty;
+                hasError = false;
+                resultFiles.Clear();
+                Logger.LogInformation($"File uploaded successfully to: {uploadedFilePath}");
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, $"Error uploading file: {e.File.Name}");
+                resultError = $"Ошибка загрузки файла: {ex.Message}";
+                hasError = true;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task StartExtraction()
+    {
+        if (string.IsNullOrEmpty(uploadedFilePath))
+            return;
+
+        isProcessing = true;
+        resultOutput = string.Empty;
+        resultError = string.Empty;
+        hasError = false;
+        resultFiles.Clear();
+
+        try
+        {
+            ProcessResult result;
+
+            switch (extractionType)
+            {
+                case "texture":
+                    result = await PhyreService.ExtractTextureAsync(uploadedFilePath);
+                    break;
+                case "characters":
+                    result = await PhyreService.ExtractCharactersAsync(uploadedFilePath, charOffset, charCount, charSize);
+                    break;
+                case "analyze":
+                    result = await PhyreService.AnalyzeFileAsync(uploadedFilePath);
+                    break;
+                case "finddata":
+                    result = await PhyreService.FindFontDataAsync(uploadedFilePath);
+                    break;
+                default:
+                    throw new ArgumentException("Неизвестный тип извлечения");
+            }
+
+            resultOutput = result.Output;
+            resultError = result.Error;
+            hasError = !result.Success;
+
+            if (result.Success && extractionType != "analyze" && extractionType != "finddata")
+            {
+                var baseName = Path.GetFileNameWithoutExtension(uploadedFileName);
+                resultFiles = FileService.GetResultFiles(baseName);
+            }
+        }
+        catch (Exception ex)
+        {
+            resultError = $"Ошибка выполнения: {ex.Message}";
+            hasError = true;
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task DownloadFile(string filePath, string fileName)
+    {
+        try
+        {
+            var downloadUrl = await FileService.SaveDownloadFileAsync(filePath, fileName);
+            await JSRuntime.InvokeVoidAsync("open", downloadUrl, "_blank");
+        }
+        catch (Exception ex)
+        {
+            resultError = $"Ошибка скачивания: {ex.Message}";
+            hasError = true;
+        }
+    }
+}

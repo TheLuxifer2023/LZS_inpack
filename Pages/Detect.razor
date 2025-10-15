@@ -1,0 +1,211 @@
+@page "/detect"
+@using LZS_Web.Services
+@inject PhyreEngineService PhyreService
+@inject FileProcessingService FileService
+
+<PageTitle>Detect Format - LZS Phyre Engine Tool</PageTitle>
+
+<div class="container-fluid">
+    <h1>👁️ Detect File Format</h1>
+    <p class="lead">Автоматическое определение формата и содержимого файлов</p>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>1. Загрузите файл для определения формата</h5>
+                </div>
+                <div class="card-body">
+                    <InputFile OnChange="@OnFileSelected" class="form-control" maxAllowedSize="100_000_000" />
+                    @if (!string.IsNullOrEmpty(fileName))
+                    {
+                        <div class="mt-3">
+                            <div class="alert alert-success">
+                                <strong>Файл загружен:</strong> @fileName<br/>
+                                <strong>Размер:</strong> @FileService.GetFileSize(fileSize)
+                            </div>
+                        </div>
+                    }
+                    <small class="text-muted">
+                        Поддерживаются все форматы: .phyre, .fnt, .dds, .gtf, .png, .json и другие
+                    </small>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(filePath))
+            {
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5>2. Определить формат</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-primary" @onclick="StartDetection" disabled="@isProcessing">
+                            @if (isProcessing)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                            }
+                            Определить формат
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="col-md-6">
+            @if (isProcessing)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5>🔄 Анализ...</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                        </div>
+                        <p class="mt-2">Анализ содержимого файла...</p>
+                    </div>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(resultOutput))
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5>📋 Результат определения формата</h5>
+                    </div>
+                    <div class="card-body">
+                        <pre class="bg-light p-3 rounded">@resultOutput</pre>
+                        
+                        @if (hasError)
+                        {
+                            <div class="alert alert-danger mt-3">
+                                <strong>Ошибка:</strong> @resultError
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-success mt-3">
+                                <strong>Формат определен!</strong>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>🎯 Определяемые форматы</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>📁 Phyre Engine</h6>
+                            <ul>
+                                <li><strong>PhyreFont:</strong> Шрифтовые файлы</li>
+                                <li><strong>PhyreModel:</strong> 3D модели</li>
+                                <li><strong>PhyreTexture:</strong> Текстовые архивы</li>
+                                <li><strong>Анализ содержимого:</strong> Поиск сигнатур и структур</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>🖼️ Текстуры</h6>
+                            <ul>
+                                <li><strong>GTF:</strong> Sony GTF формат</li>
+                                <li><strong>DDS:</strong> DirectDraw Surface</li>
+                                <li><strong>PNG:</strong> Portable Network Graphics</li>
+                                <li><strong>JPEG:</strong> Joint Photographic Experts Group</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <h6>📝 Шрифты</h6>
+                            <ul>
+                                <li><strong>BMFont:</strong> .fnt файлы</li>
+                                <li><strong>Custom Font:</strong> Нестандартные форматы</li>
+                                <li><strong>Raw Font:</strong> Бинарные данные шрифтов</li>
+                                <li><strong>Unicode поддержка:</strong> Полная поддержка</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>🔍 Другие</h6>
+                            <ul>
+                                <li><strong>JSON:</strong> JavaScript Object Notation</li>
+                                <li><strong>TGA:</strong> Truevision Graphics Adapter</li>
+                                <li><strong>BMP:</strong> Bitmap изображения</li>
+                                <li><strong>Unknown:</strong> Неизвестные форматы</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string filePath = string.Empty;
+    private string fileName = string.Empty;
+    private long fileSize = 0;
+    private bool isProcessing = false;
+    private string resultOutput = string.Empty;
+    private string resultError = string.Empty;
+    private bool hasError = false;
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        if (e.File != null)
+        {
+            try
+            {
+                filePath = await FileService.SaveBrowserFileAsync(e.File);
+                fileName = e.File.Name;
+                fileSize = e.File.Size;
+                ClearResults();
+            }
+            catch (Exception ex)
+            {
+                resultError = $"Ошибка загрузки файла: {ex.Message}";
+                hasError = true;
+            }
+        }
+    }
+
+    private async Task StartDetection()
+    {
+        if (string.IsNullOrEmpty(filePath))
+            return;
+
+        isProcessing = true;
+        ClearResults();
+
+        try
+        {
+            var result = await PhyreService.DetectFormatAsync(filePath);
+
+            resultOutput = result.Output;
+            resultError = result.Error;
+            hasError = !result.Success;
+        }
+        catch (Exception ex)
+        {
+            resultError = $"Ошибка определения формата: {ex.Message}";
+            hasError = true;
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void ClearResults()
+    {
+        resultOutput = string.Empty;
+        resultError = string.Empty;
+        hasError = false;
+    }
+}
