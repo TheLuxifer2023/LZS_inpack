@@ -1027,15 +1027,21 @@ namespace LZS_unpack
 				// Get the current directory
 				string currentDir = Directory.GetCurrentDirectory();
 				
-				// Check if LZS_Web.exe exists in bin/Release/net9.0/
-				string webExePath = Path.Combine(currentDir, "bin", "Release", "net9.0", "LZS_Web.exe");
+				// Check if LZS_Web.exe exists (first in current directory, then in bin/Release/net9.0/)
+				string webExePath = Path.Combine(currentDir, "LZS_Web.exe");
 				if (!File.Exists(webExePath))
 				{
-					Console.WriteLine("❌ Error: LZS_Web.exe not found!");
-					Console.WriteLine("   Expected location: " + webExePath);
-					Console.WriteLine("   Make sure the web application is built in Release mode.");
-					Console.WriteLine("   Run: dotnet build LZS_Web.csproj -c Release");
-					return;
+					webExePath = Path.Combine(currentDir, "bin", "Release", "net9.0", "LZS_Web.exe");
+					if (!File.Exists(webExePath))
+					{
+						Console.WriteLine("❌ Error: LZS_Web.exe not found!");
+						Console.WriteLine("   Searched locations:");
+						Console.WriteLine("   - " + Path.Combine(currentDir, "LZS_Web.exe"));
+						Console.WriteLine("   - " + Path.Combine(currentDir, "bin", "Release", "net9.0", "LZS_Web.exe"));
+						Console.WriteLine("   Make sure LZS_Web.exe is in the same directory as LZS_inpack.exe");
+						Console.WriteLine("   or run: dotnet build LZS_Web.csproj -c Release");
+						return;
+					}
 				}
 
 				// Start the web application
