@@ -11,18 +11,7 @@ namespace LZS_unpack
 	/// </summary>
 	internal class FontExtractor
 	{
-		public class BitmapFontChar
-		{
-			public int CharCode;
-			public float X;
-			public float Y;
-			public float Width;
-			public float Height;
-			public float OffsetX;
-			public float OffsetY;
-			public float AdvanceX;
-			public int Page;
-		}
+	// BitmapFontChar moved to FontFormatConverter.cs
 
 		public static void ExtractFont(string inputPath)
 		{
@@ -257,32 +246,11 @@ namespace LZS_unpack
 
 		private static void ExportBMFont(List<BitmapFontChar> chars, string inputPath)
 		{
-			string outputPath = Path.GetFileNameWithoutExtension(inputPath) + ".fnt";
-			StreamWriter sw = new StreamWriter(outputPath);
-			NumberFormatInfo nfi = new NumberFormatInfo();
-			nfi.NumberDecimalSeparator = ".";
-
-			sw.WriteLine("info face=\"" + Path.GetFileNameWithoutExtension(inputPath) + "\" size=32 bold=0 italic=0");
-			sw.WriteLine("common lineHeight=32 base=26 scaleW=2048 scaleH=2048 pages=1");
-			sw.WriteLine("page id=0 file=\"" + Path.GetFileNameWithoutExtension(inputPath) + ".png\"");
-			sw.WriteLine("chars count=" + chars.Count);
-
-			foreach (var ch in chars)
-			{
-				sw.WriteLine(string.Format(nfi,
-					"char id={0} x={1} y={2} width={3} height={4} xoffset={5} yoffset={6} xadvance={7} page={8} chnl=15",
-					ch.CharCode,
-					(int)ch.X, (int)ch.Y,
-					(int)ch.Width, (int)ch.Height,
-					(int)ch.OffsetX, (int)ch.OffsetY,
-					(int)ch.AdvanceX,
-					ch.Page
-				));
-			}
-
-			sw.Close();
-
-			Console.WriteLine("Exported BMFont format: " + outputPath);
+			// Используем новый FontFormatConverter для сохранения оригинальной структуры
+			string outputPath = Path.GetFileNameWithoutExtension(inputPath) + "_extracted.fnt";
+			string textureFileName = Path.GetFileNameWithoutExtension(inputPath) + "_texture.png";
+			
+			FontFormatConverter.ConvertRawToBMFont(chars, outputPath, textureFileName);
 		}
 
 		private static void ExportJSON(List<BitmapFontChar> chars, string inputPath)

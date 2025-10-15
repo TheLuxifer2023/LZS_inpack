@@ -290,29 +290,97 @@ namespace LZS_unpack
 		static void ExtractDDS(FileStream fs, BinaryReader br, long dataOffset, int width, int height, string format, string sourceFile)
 		{
 			Console.WriteLine();
-			Console.WriteLine("=== Extracting DDS Texture ===");
+			Console.WriteLine("=== Extracting Texture ===");
 			Console.WriteLine("Format: " + format);
 			Console.WriteLine("Size: " + width + "x" + height);
 			Console.WriteLine("Data offset: 0x" + dataOffset.ToString("X"));
 			Console.WriteLine();
 			
 			string baseName = Path.GetFileNameWithoutExtension(sourceFile);
-			string outputPath = baseName + "_texture.dds";
+			
+			// Определяем оригинальный формат текстуры
+			TextureFormatConverter.TextureFormat detectedFormat = TextureFormatConverter.TextureFormat.DDS; // По умолчанию DDS
+			
+			// Читаем первые байты данных для определения формата
+			long currentPos = fs.Position;
+			fs.Seek(dataOffset, SeekOrigin.Begin);
+			byte[] formatBytes = br.ReadBytes(16);
+			detectedFormat = TextureFormatConverter.DetectTextureFormat(formatBytes);
+			fs.Seek(currentPos, SeekOrigin.Begin);
+			
+			// Если не удалось определить по данным, используем информацию из FormatDetector
+			if (detectedFormat == TextureFormatConverter.TextureFormat.Unknown)
+			{
+				Console.WriteLine("Could not detect format from texture data, checking file signatures...");
+				
+				// Проверяем файл на наличие GTF сигнатур по частям
+				bool foundGTF = false;
+				long gtfOffset = -1;
+				fs.Seek(0, SeekOrigin.Begin);
+				
+				// Читаем файл блоками по 64KB для поиска GTF сигнатуры
+				byte[] buffer = new byte[65536]; // 64KB buffer
+				int bytesRead;
+				long currentFilePos = 0;
+				while ((bytesRead = fs.Read(buffer, 0, buffer.Length)) > 0)
+				{
+					// Ищем GTF сигнатуру в текущем буфере
+					for (int i = 0; i <= bytesRead - 4; i++)
+					{
+						if (buffer[i] == 0x04 && buffer[i+1] == 0x01 && buffer[i+2] == 0x00 && buffer[i+3] == 0x00)
+						{
+							foundGTF = true;
+							gtfOffset = currentFilePos + i;
+							break;
+						}
+					}
+					if (foundGTF) break;
+					currentFilePos += bytesRead;
+				}
+				
+				if (foundGTF)
+				{
+					detectedFormat = TextureFormatConverter.TextureFormat.GTF;
+					Console.WriteLine($"Found GTF signature in file at offset 0x{gtfOffset:X} ({gtfOffset}) - using GTF format");
+				}
+				else
+				{
+					Console.WriteLine("No GTF signature found - using DDS format");
+					detectedFormat = TextureFormatConverter.TextureFormat.DDS;
+				}
+			}
+			
+			Console.WriteLine("Detected texture format: " + detectedFormat);
+			Console.WriteLine();
+			
+			// Создаем имя файла с правильным расширением
+			string extension = TextureFormatConverter.GetRecommendedExtension(detectedFormat);
+			string outputPath = baseName + "_texture" + extension;
 			
 			FileStream outFs = new FileStream(outputPath, FileMode.Create);
 			BinaryWriter bw = new BinaryWriter(outFs);
 			
 			try
 			{
-				// Write DDS header
-				WriteDDSHeader(bw, width, height, format);
-				
-				// Copy texture data
-				fs.Seek(dataOffset, SeekOrigin.Begin);
-				int dataSize = format == "L8" ? width * height : CalculateCompressedSize(width, height, format);
-				
-				byte[] textureData = br.ReadBytes(dataSize);
-				bw.Write(textureData);
+				// Сохраняем в оригинальном формате
+				if (detectedFormat == TextureFormatConverter.TextureFormat.GTF)
+				{
+					// Для GTF просто копируем сырые данные
+					fs.Seek(dataOffset, SeekOrigin.Begin);
+					byte[] textureData = br.ReadBytes(CalculateCompressedSize(width, height, format));
+					bw.Write(textureData);
+				}
+				else
+				{
+					// Для DDS пишем заголовок
+					WriteDDSHeader(bw, width, height, format);
+					
+					// Копируем данные текстуры
+					fs.Seek(dataOffset, SeekOrigin.Begin);
+					int dataSize = format == "L8" ? width * height : CalculateCompressedSize(width, height, format);
+					byte[] textureData = br.ReadBytes(dataSize);
+					bw.Write(textureData);
+				}
 				
 				Console.WriteLine("Successfully extracted texture!");
 				Console.WriteLine("Output file: " + outputPath);
@@ -326,18 +394,18 @@ namespace LZS_unpack
 				bw.Close();
 				outFs.Close();
 				
-				bool converted = DDSToPNGConverter.ConvertDDSToPNG(outputPath, pngPath);
-				if (converted)
+				// Используем универсальный конвертер
+				try
 				{
-					Console.WriteLine("Both DDS and PNG files are ready!");
-					Console.WriteLine("  DDS: " + outputPath);
+					TextureFormatConverter.ConvertToPNG(outputPath, pngPath);
+					Console.WriteLine("Both original and PNG files are ready!");
+					Console.WriteLine("  Original: " + outputPath);
 					Console.WriteLine("  PNG: " + pngPath);
 				}
-				else
+				catch (Exception ex)
 				{
-					Console.WriteLine();
-					Console.WriteLine("PNG conversion failed. Use ImageMagick manually:");
-					Console.WriteLine("  magick " + outputPath + " " + pngPath);
+					Console.WriteLine("PNG conversion failed: " + ex.Message);
+					Console.WriteLine("Original file saved: " + outputPath);
 				}
 			}
 			catch (Exception ex)

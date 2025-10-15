@@ -11,36 +11,50 @@ namespace LZS_unpack
 		// Token: 0x0600006A RID: 106 RVA: 0x0000446C File Offset: 0x0000266C
 		private static void ShowUsage()
 		{
-			Console.WriteLine("LZS Phyre Engine Pack/Unpack Tool v2.5");
+			Console.WriteLine("LZS Phyre Engine Pack/Unpack Tool v2.7");
 			Console.WriteLine("========================================");
 			Console.WriteLine("");
 			Console.WriteLine("Usage:");
 			Console.WriteLine("  Unpack:    LZS_inpack.exe <input.phyre>");
 			Console.WriteLine("  Pack:      LZS_inpack.exe -pack <input.smd> <input.mesh.ascii> <output.phyre>");
-			Console.WriteLine("  PackFont:  LZS_inpack.exe -packfont <input.fnt> <input.dds> <output.phyre>");
+			Console.WriteLine("  PackFont:  LZS_inpack.exe -packfont <input.fnt> <input.texture> <output.phyre>  ✨ Updated!");
 			Console.WriteLine("  Analyze:   LZS_inpack.exe -analyze <input.phyre>");
-			Console.WriteLine("  Extract: LZS_inpack.exe -extract <font.phyre>  (FULL font extraction)");
-			Console.WriteLine("  Debug:   LZS_inpack.exe -debug <font.phyre> <offset>  (Hex dump & structure analysis)");
-			Console.WriteLine("  Find:    LZS_inpack.exe -findchars <font.phyre> <expected_count>  (Auto-find character data)");
-			Console.WriteLine("  Analyze: LZS_inpack.exe -analyzechar <font.phyre> <offset> <count>  (Deep char structure analysis)");
-			Console.WriteLine("  Extract: LZS_inpack.exe -extractchar <font.phyre> <offset> <count> <size>  (Extract with known structure)");
-			Console.WriteLine("  FindData: LZS_inpack.exe -finddata <font.phyre>  (Find absolute offset for font data)");
-			Console.WriteLine("  FindSize: LZS_inpack.exe -findsize <font.phyre> <offset>  (Find structure size from sequential codes)");
-			Console.WriteLine("  Texture:  LZS_inpack.exe -texture <font.phyre>  (Extract texture to DDS)");
-			Console.WriteLine("  ToPNG:    LZS_inpack.exe -topng <input.dds> <output.png>  (Convert DDS to PNG)");
-			Console.WriteLine("  ToDDS:    LZS_inpack.exe -todds <input.png> <output.dds>  (Convert PNG to DDS L8)");
+			Console.WriteLine("  Texture:   LZS_inpack.exe -texture <font.phyre>  (Extract texture with auto-format detection) ✨ Updated!");
+			Console.WriteLine("  Verify:    LZS_inpack.exe -verify <packed.phyre> [original.phyre]  (Verify packed file quality) ✨ NEW!");
+			Console.WriteLine("  Detect:    LZS_inpack.exe -detect <file>  (Auto-detect file format & content type) ✨ Enhanced!");
+			Console.WriteLine("");
+			Console.WriteLine("Font Analysis & Extraction:");
+			Console.WriteLine("  Extract:   LZS_inpack.exe -extract <font.phyre>  (Auto-extract font - may not find all chars)");
+			Console.WriteLine("  ExtractChar: LZS_inpack.exe -extractchar <font.phyre> <offset> <count> <size>  (Precise extraction)");
+			Console.WriteLine("  Debug:     LZS_inpack.exe -debug <font.phyre> <offset>  (Hex dump & structure analysis)");
+			Console.WriteLine("  FindChars: LZS_inpack.exe -findchars <font.phyre> <expected_count>  (Auto-find character data)");
+			Console.WriteLine("  AnalyzeChar: LZS_inpack.exe -analyzechar <font.phyre> <offset> <count>  (Deep char structure analysis)");
+			Console.WriteLine("  FindData:  LZS_inpack.exe -finddata <font.phyre>  (Find absolute offset for font data)");
+			Console.WriteLine("  FindSize:  LZS_inpack.exe -findsize <font.phyre> <offset>  (Find structure size from sequential codes)");
+			Console.WriteLine("");
+			Console.WriteLine("Texture Conversion:");
+			Console.WriteLine("  ToPNG:     LZS_inpack.exe -topng <input.dds/gtf> <output.png>  (Convert to PNG) ✨ Updated!");
+			Console.WriteLine("  ToDDS:     LZS_inpack.exe -todds <input.png> <output.dds>  (Convert PNG to DDS L8)");
+			Console.WriteLine("");
+			Console.WriteLine("Supported Texture Formats:");
+			Console.WriteLine("  GTF (Sony GTF) - Original Phyre Engine format ✨ NEW!");
+			Console.WriteLine("  DDS (DirectDraw Surface) - Standard format");
+			Console.WriteLine("  PNG (Portable Network Graphics) - For editing");
 			Console.WriteLine("");
 			Console.WriteLine("Examples:");
 			Console.WriteLine("  LZS_inpack.exe model.phyre");
 			Console.WriteLine("  LZS_inpack.exe -pack model.smd model.mesh.ascii model_new.phyre");
-			Console.WriteLine("  LZS_inpack.exe -packfont font.fnt texture.dds font_new.phyre");
+			Console.WriteLine("  LZS_inpack.exe -packfont font.fnt texture.gtf font_new.phyre  ✨ GTF support!");
 			Console.WriteLine("  LZS_inpack.exe -analyze font.phyre");
-			Console.WriteLine("  LZS_inpack.exe -extract font00_usa.fgen.phyre");
+			Console.WriteLine("  LZS_inpack.exe -extract font00_usa.fgen.phyre  # Auto-extract (may miss some chars)");
+			Console.WriteLine("  LZS_inpack.exe -extractchar font00_usa.fgen.phyre 3446 7447 45  # Precise extraction");
 			Console.WriteLine("  LZS_inpack.exe -debug font.phyre 335120");
 			Console.WriteLine("  LZS_inpack.exe -findchars font00_usa.fgen.phyre 7447");
 			Console.WriteLine("  LZS_inpack.exe -analyzechar font00_usa.fgen.phyre 335120 7447");
-			Console.WriteLine("  LZS_inpack.exe -extractchar font00_usa.fgen.phyre 335120 7447 36");
 			Console.WriteLine("  LZS_inpack.exe -finddata font00_usa.fgen.phyre");
+			Console.WriteLine("  LZS_inpack.exe -detect unknown_file.bin  ✨ Enhanced detection!");
+			Console.WriteLine("  LZS_inpack.exe -detect font00_usa.fgen.phyre  ✨ Detects: PhyreFont + GTF!");
+			Console.WriteLine("  LZS_inpack.exe -verify font_new.phyre font_original.phyre  ✨ Verify quality!");
 		}
 
 		private static Quaternion3D matrix2quat(double[,] m)
@@ -100,13 +114,53 @@ namespace LZS_unpack
 				return;
 			}
 
-			// Check if PNG to DDS conversion mode
+			// Check if format detection mode
+			if (args.Length >= 2 && args[0] == "-detect")
+			{
+				try
+				{
+					string inputPath = args[1];
+					
+					if (!File.Exists(inputPath))
+					{
+						Console.WriteLine("Error: File not found: " + inputPath);
+						return;
+					}
+
+					FormatDetector.FormatInfo formatInfo = FormatDetector.DetectFormat(inputPath);
+					
+					Console.WriteLine("=== File Format Detection ===");
+					Console.WriteLine("File: " + Path.GetFileName(inputPath));
+					Console.WriteLine("Size: " + new FileInfo(inputPath).Length + " bytes");
+					Console.WriteLine();
+					Console.WriteLine("Detected Format: " + formatInfo.Format);
+					Console.WriteLine("Description: " + formatInfo.Description);
+					Console.WriteLine("Recommended Extension: " + formatInfo.RecommendedExtension);
+					Console.WriteLine("Is Valid: " + (formatInfo.IsValid ? "Yes" : "No"));
+					
+					if (formatInfo.MagicBytes != null && formatInfo.MagicBytes.Length > 0)
+					{
+						Console.WriteLine("Magic Bytes: " + BitConverter.ToString(formatInfo.MagicBytes).Replace("-", " "));
+					}
+					
+					Console.WriteLine();
+					Console.WriteLine("Recommended Output Name: " + FormatDetector.CreateOutputFileName(inputPath, formatInfo));
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine("Error detecting format: " + ex.Message);
+					Console.WriteLine(ex.StackTrace);
+				}
+				return;
+			}
+
+			// Check if PNG to texture conversion mode
 			if (args.Length >= 3 && args[0] == "-todds")
 			{
 				try
 				{
 					string inputPNG = args[1];
-					string outputDDS = args[2];
+					string outputTexture = args[2];
 					
 					if (!File.Exists(inputPNG))
 					{
@@ -114,35 +168,46 @@ namespace LZS_unpack
 						return;
 					}
 
-					PNGToDDSConverter.ConvertPNGToDDS(inputPNG, outputDDS);
+					// Определяем целевой формат по расширению
+					string extension = Path.GetExtension(outputTexture).ToLower();
+					if (extension == ".gtf")
+					{
+						TextureFormatConverter.ConvertFromPNG(inputPNG, outputTexture, TextureFormatConverter.TextureFormat.GTF);
+					}
+					else
+					{
+						// По умолчанию DDS
+						TextureFormatConverter.ConvertFromPNG(inputPNG, outputTexture, TextureFormatConverter.TextureFormat.DDS);
+					}
 				}
 				catch (Exception ex)
 				{
-					Console.WriteLine("Error converting PNG to DDS: " + ex.Message);
+					Console.WriteLine("Error converting PNG to texture: " + ex.Message);
 					Console.WriteLine(ex.StackTrace);
 				}
 				return;
 			}
 
-			// Check if DDS to PNG conversion mode
+			// Check if texture to PNG conversion mode
 			if (args.Length >= 3 && args[0] == "-topng")
 			{
 				try
 				{
-					string inputDDS = args[1];
+					string inputTexture = args[1];
 					string outputPNG = args[2];
 					
-					if (!File.Exists(inputDDS))
+					if (!File.Exists(inputTexture))
 					{
-						Console.WriteLine("Error: DDS file not found: " + inputDDS);
+						Console.WriteLine("Error: Texture file not found: " + inputTexture);
 						return;
 					}
 
-					DDSToPNGConverter.ConvertDDSToPNG(inputDDS, outputPNG);
+					// Используем универсальный конвертер
+					TextureFormatConverter.ConvertToPNG(inputTexture, outputPNG);
 				}
 				catch (Exception ex)
 				{
-					Console.WriteLine("Error converting DDS to PNG: " + ex.Message);
+					Console.WriteLine("Error converting texture to PNG: " + ex.Message);
 					Console.WriteLine(ex.StackTrace);
 				}
 				return;
@@ -397,6 +462,36 @@ namespace LZS_unpack
 				catch (Exception ex)
 				{
 					Console.WriteLine("Error packing font: " + ex.Message);
+					Console.WriteLine(ex.StackTrace);
+				}
+				return;
+			}
+
+			// Check if verify mode
+			if (args.Length >= 2 && args[0] == "-verify")
+			{
+				try
+				{
+					string packedPath = args[1];
+					string originalPath = args.Length >= 3 ? args[2] : null;
+
+					if (!File.Exists(packedPath))
+					{
+						Console.WriteLine("Error: Packed file not found: " + packedPath);
+						return;
+					}
+
+					if (originalPath != null && !File.Exists(originalPath))
+					{
+						Console.WriteLine("Error: Original file not found: " + originalPath);
+						return;
+					}
+
+					PhyrePackVerifier.VerifyPackedFile(packedPath, originalPath);
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine("Error verifying packed file: " + ex.Message);
 					Console.WriteLine(ex.StackTrace);
 				}
 				return;

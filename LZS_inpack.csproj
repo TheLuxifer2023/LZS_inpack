@@ -61,6 +61,11 @@
     <Compile Include="LZS_unpack\DDSToPNGConverter.cs" />
     <Compile Include="LZS_unpack\PNGToDDSConverter.cs" />
     <Compile Include="LZS_unpack\FontPacker.cs" />
+    <Compile Include="LZS_unpack\FormatDetector.cs" />
+    <Compile Include="LZS_unpack\FontFormatConverter.cs" />
+    <Compile Include="LZS_unpack\TextureFormatConverter.cs" />
+    <Compile Include="LZS_unpack\GTFParser.cs" />
+    <Compile Include="LZS_unpack\PhyrePackVerifier.cs" />
     <Compile Include="LZS_unpack\Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

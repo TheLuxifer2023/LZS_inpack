@@ -16,12 +16,12 @@ namespace LZS_unpack
 			public float offsetX, offsetY, advanceX;
 		}
 
-		public static void PackFont(string fntPath, string ddsPath, string outputPhyre, string templatePhyre = null)
+		public static void PackFont(string fntPath, string texturePath, string outputPhyre, string templatePhyre = null)
 		{
 			Console.WriteLine();
 			Console.WriteLine("=== Packing Phyre Engine Font ===");
 			Console.WriteLine("FNT:    " + Path.GetFileName(fntPath));
-			Console.WriteLine("DDS:    " + Path.GetFileName(ddsPath));
+			Console.WriteLine("Texture:" + Path.GetFileName(texturePath));
 			Console.WriteLine("Output: " + Path.GetFileName(outputPhyre));
 			Console.WriteLine();
 
@@ -31,22 +31,25 @@ namespace LZS_unpack
 				return;
 			}
 
-			if (!File.Exists(ddsPath))
+			if (!File.Exists(texturePath))
 			{
-				Console.WriteLine("ERROR: DDS file not found: " + ddsPath);
+				Console.WriteLine("ERROR: Texture file not found: " + texturePath);
 				return;
 			}
 
-			// Parse FNT file
+			// Parse FNT file using FontFormatConverter
 			Console.WriteLine("Parsing BMFont file...");
-			List<CharData> chars = ParseBMFont(fntPath);
-			Console.WriteLine("  Loaded " + chars.Count + " characters");
+			List<BitmapFontChar> fontChars = FontFormatConverter.ConvertBMFontToRaw(fntPath);
+			Console.WriteLine("  Loaded " + fontChars.Count + " characters");
+			
+			// Convert to CharData format for packing
+			List<CharData> chars = ConvertToCharData(fontChars);
 
-			// Load DDS texture
-			Console.WriteLine("Loading DDS texture...");
+			// Load texture (supports multiple formats)
+			Console.WriteLine("Loading texture...");
 			byte[] textureData;
 			int texWidth, texHeight;
-			LoadDDSTexture(ddsPath, out textureData, out texWidth, out texHeight);
+			LoadTexture(texturePath, out textureData, out texWidth, out texHeight);
 			Console.WriteLine("  Texture: " + texWidth + "x" + texHeight + ", " + (textureData.Length / 1024) + " KB");
 
 			// Try to find template (original .phyre file in same directory)
@@ -84,7 +87,33 @@ namespace LZS_unpack
 			Console.WriteLine();
 		}
 
-		static List<CharData> ParseBMFont(string fntPath)
+		/// <summary>
+		/// Конвертирует BitmapFontChar в CharData для упаковки
+		/// </summary>
+		static List<CharData> ConvertToCharData(List<BitmapFontChar> fontChars)
+		{
+			List<CharData> chars = new List<CharData>();
+			
+			foreach (var fontChar in fontChars)
+			{
+				CharData ch = new CharData
+				{
+					code = fontChar.CharCode,
+					x = fontChar.X,
+					y = fontChar.Y,
+					width = fontChar.Width,
+					height = fontChar.Height,
+					offsetX = fontChar.OffsetX,
+					offsetY = fontChar.OffsetY,
+					advanceX = fontChar.AdvanceX
+				};
+				chars.Add(ch);
+			}
+			
+			return chars;
+		}
+
+		static List<CharData> ParseBMFont_OLD(string fntPath)
 		{
 			List<CharData> chars = new List<CharData>();
 			string[] lines = File.ReadAllLines(fntPath);
@@ -121,6 +150,27 @@ namespace LZS_unpack
 			chars.Sort((a, b) => a.code.CompareTo(b.code));
 			
 			return chars;
+		}
+
+		static void LoadTexture(string texturePath, out byte[] data, out int width, out int height)
+		{
+			// Определяем формат текстуры
+			TextureFormatConverter.TextureFormat format = TextureFormatConverter.DetectTextureFormat(texturePath);
+			
+			switch (format)
+			{
+				case TextureFormatConverter.TextureFormat.DDS:
+					LoadDDSTexture(texturePath, out data, out width, out height);
+					break;
+				case TextureFormatConverter.TextureFormat.GTF:
+					LoadGTFTexture(texturePath, out data, out width, out height);
+					break;
+				case TextureFormatConverter.TextureFormat.PNG:
+					LoadPNGTexture(texturePath, out data, out width, out height);
+					break;
+				default:
+					throw new NotSupportedException($"Unsupported texture format: {format}");
+			}
 		}
 
 		static void LoadDDSTexture(string ddsPath, out byte[] data, out int width, out int height)
@@ -186,6 +236,53 @@ namespace LZS_unpack
 			{
 				br.Close();
 				fs.Close();
+			}
+		}
+
+		static void LoadGTFTexture(string gtfPath, out byte[] data, out int width, out int height)
+		{
+			// Пока используем упрощенную загрузку GTF
+			// В будущем можно добавить полноценную поддержку GTF
+			Console.WriteLine("Warning: GTF format not fully supported, using simplified loading");
+			
+			FileStream fs = new FileStream(gtfPath, FileMode.Open, FileAccess.Read);
+			BinaryReader br = new BinaryReader(fs);
+			
+			try
+			{
+				// Пропускаем заголовок GTF и читаем данные
+				fs.Seek(16, SeekOrigin.Begin); // Пропускаем первые 16 байт
+				
+				// Предполагаем размеры 2048x2048 для шрифтов
+				width = 2048;
+				height = 2048;
+				
+				// Читаем оставшиеся данные
+				long remainingBytes = fs.Length - fs.Position;
+				data = br.ReadBytes((int)remainingBytes);
+			}
+			finally
+			{
+				br.Close();
+				fs.Close();
+			}
+		}
+
+		static void LoadPNGTexture(string pngPath, out byte[] data, out int width, out int height)
+		{
+			// Конвертируем PNG в DDS и загружаем
+			string tempDdsPath = Path.GetTempFileName() + ".dds";
+			
+			try
+			{
+				TextureFormatConverter.ConvertFromPNG(pngPath, tempDdsPath, TextureFormatConverter.TextureFormat.DDS);
+				LoadDDSTexture(tempDdsPath, out data, out width, out height);
+			}
+			finally
+			{
+				// Удаляем временный файл
+				if (File.Exists(tempDdsPath))
+					File.Delete(tempDdsPath);
 			}
 		}
 
