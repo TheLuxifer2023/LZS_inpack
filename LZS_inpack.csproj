@@ -1,0 +1,71 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{CDA56B44-9ADD-442E-B7E5-498CA340746E}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>LZS_inpack</RootNamespace>
+    <AssemblyName>LZS_inpack</AssemblyName>
+    <TargetFrameworkVersion>4.8.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <StartupObject>LZS_unpack.Program</StartupObject>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Drawing" />
+  </ItemGroup>
+  <ItemGroup>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="APPLIB\C3D.cs" />
+    <Compile Include="APPLIB\Quaternion3D.cs" />
+    <Compile Include="APPLIB\Vector3D.cs" />
+    <Compile Include="LZS_unpack\BinaryReaderBE.cs" />
+    <Compile Include="LZS_unpack\BinaryWriterBE.cs" />
+    <Compile Include="LZS_unpack\SMDParser.cs" />
+    <Compile Include="LZS_unpack\MeshAsciiParser.cs" />
+    <Compile Include="LZS_unpack\PhyrePacker.cs" />
+    <Compile Include="LZS_unpack\PhyreAnalyzer.cs" />
+    <Compile Include="LZS_unpack\PhyreDebugger.cs" />
+    <Compile Include="LZS_unpack\FontUnpacker.cs" />
+    <Compile Include="LZS_unpack\FontExtractor.cs" />
+    <Compile Include="LZS_unpack\DDSExtractor.cs" />
+    <Compile Include="LZS_unpack\CharStructureAnalyzer.cs" />
+    <Compile Include="LZS_unpack\FullCharExtractor.cs" />
+    <Compile Include="LZS_unpack\FontDataFinder.cs" />
+    <Compile Include="LZS_unpack\StructSizeFinder.cs" />
+    <Compile Include="LZS_unpack\TextureExtractor.cs" />
+    <Compile Include="LZS_unpack\DDSToPNGConverter.cs" />
+    <Compile Include="LZS_unpack\PNGToDDSConverter.cs" />
+    <Compile Include="LZS_unpack\FontPacker.cs" />
+    <Compile Include="LZS_unpack\Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.manifest" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
